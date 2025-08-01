@@ -1,6 +1,7 @@
 package com.chtrembl.petstore.order.service;
 
 import com.chtrembl.petstore.order.exception.OrderNotFoundException;
+import com.chtrembl.petstore.order.messaging.OrderEventPublisher;
 import com.chtrembl.petstore.order.model.Order;
 import com.chtrembl.petstore.order.model.Product;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class OrderService {
     private static final String ORDERS = "orders";
     private final CacheManager cacheManager;
     private final ProductService productService;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Cacheable(ORDERS)
     public Order createOrder(String orderId) {
@@ -133,7 +135,11 @@ public class OrderService {
         Cache cache = cacheManager.getCache(ORDERS);
         if (cache != null) {
             cache.put(order.getId(), cachedOrder);
-        }
+            try {
+                orderEventPublisher.publish(cachedOrder);
+            } catch (Exception e) {
+                log.error("Failed to publish order update to Service Bus for order {}", cachedOrder.getId(), e);
+            }        }
 
         return cachedOrder;
     }
