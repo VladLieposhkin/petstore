@@ -1,4 +1,18 @@
 spring:
+  datasource:
+    url: ${PRODUCT_DB_URL:jdbc:postgresql://vlpostgresql.postgres.database.azure.com:5432/product_db}
+    username: ${PRODUCT_DB_USERNAME:vladmin}
+    password: ${PRODUCT_DB_PASSWORD:PG_609vl}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+
   application:
     name: petstoreproductservice
 server:

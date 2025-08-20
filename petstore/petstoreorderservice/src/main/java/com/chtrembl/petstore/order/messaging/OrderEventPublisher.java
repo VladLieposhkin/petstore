@@ -11,10 +11,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderEventPublisher {
 
+    private final static String connectionString = "Endpoint=sb://vlorders.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=DW5yURQHwPWrq3tLldnqq3IWpbokxA/v++ASbPWec0I=";
+
     private final ServiceBusSenderClient senderClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public OrderEventPublisher(@Value("${azure.servicebus.connection-string}") String connectionString) {
+//    public OrderEventPublisher(@Value("${azure.servicebus.connection-string}") String connectionString) {
+    public OrderEventPublisher() {
         this.senderClient = new ServiceBusClientBuilder()
                 .connectionString(connectionString)
                 .sender()

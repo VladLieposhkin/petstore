@@ -4,7 +4,10 @@ import com.chtrembl.petstore.order.exception.OrderNotFoundException;
 import com.chtrembl.petstore.order.messaging.OrderEventPublisher;
 import com.chtrembl.petstore.order.model.Order;
 import com.chtrembl.petstore.order.model.Product;
+import com.chtrembl.petstore.order.repository.OrderRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -25,16 +28,36 @@ public class OrderService {
     private final CacheManager cacheManager;
     private final ProductService productService;
     private final OrderEventPublisher orderEventPublisher;
+    private final OrderRepository orderRepository;
 
     @Cacheable(ORDERS)
     public Order createOrder(String orderId) {
         log.info("Creating new order with id: {} and caching it", orderId);
-        return Order.builder()
+        Order newOrder = Order.builder()
                 .id(orderId)
                 .products(new ArrayList<>())
                 .status(Order.Status.PLACED)
                 .complete(false)
                 .build();
+
+        orderRepository.save(newOrder);
+        log.info("Order {} saved in CosmosDB", orderId);
+        return newOrder;
+    }
+
+    public Order newOrder(Order order) {
+        log.info("Preparing new order with id: {}", order.getId());
+        Order newOrder = Order.builder()
+                .id(order.getId())
+                .email(order.getEmail())
+                .products(order.getProducts())
+                .status(Order.Status.PLACED)
+                .complete(false)
+                .build();
+
+//        orderRepository.save(newOrder);
+        log.info("Order {} prepared", order.getId());
+        return newOrder;
     }
 
     /**
@@ -53,21 +76,24 @@ public class OrderService {
         }
 
         // Try to get from cache
-        Cache cache = cacheManager.getCache(ORDERS);
-        if (cache != null) {
-            Cache.ValueWrapper wrapper = cache.get(orderId);
-            if (wrapper != null) {
-                Order cachedOrder = (Order) wrapper.get();
-                if (cachedOrder != null) {
-                    log.info("Found existing order: {}", orderId);
-                    return cachedOrder;
-                }
-            }
-        }
+//        Cache cache = cacheManager.getCache(ORDERS);
+//        if (cache != null) {
+//            Cache.ValueWrapper wrapper = cache.get(orderId);
+//            if (wrapper != null) {
+//                Order cachedOrder = (Order) wrapper.get();
+//                if (cachedOrder != null) {
+//                    log.info("Found existing order: {}", orderId);
+//                    return cachedOrder;
+//                }
+//            }
+//        }
+
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order " + orderId + " not found"));
 
         // Order not found - throw exception instead of creating new one
-        log.warn("Order not found: {}", orderId);
-        throw new OrderNotFoundException("Order with ID " + orderId + " not found");
+//        log.warn("Order not found: {}", orderId);
+//        throw new OrderNotFoundException("Order with ID " + orderId + " not found");
     }
 
     /**
@@ -100,54 +126,49 @@ public class OrderService {
         return newOrder;
     }
 
+    @SneakyThrows
     public Order updateOrder(Order order) {
-        log.info("Updating order: {}", order.getId());
+        log.info("Updating order {}", order.getId());
 
-        // Validate products exist before processing order
+
+        Order existingOrder = orderRepository.findById(order.getId())
+                .orElse(newOrder(order));
+
         if (order.getProducts() != null && !order.getProducts().isEmpty()) {
             List<Product> availableProducts = productService.getAvailableProducts();
             validateProductsExist(order.getProducts(), availableProducts);
         }
+//        existingOrder.setProducts(order.getProducts());
 
-        // Use getOrCreateOrder for updates (allows creation)
-        Order cachedOrder = getOrCreateOrder(order.getId());
-
-        // Update basic fields
-        cachedOrder.setEmail(order.getEmail());
-
-        // Update status only if new status is provided
+        existingOrder.setEmail(order.getEmail());
         if (order.getStatus() != null) {
-            cachedOrder.setStatus(order.getStatus());
+            existingOrder.setStatus(order.getStatus());
         }
 
-        // Handle completion status
         Boolean isComplete = order.getComplete();
         if (isComplete != null && isComplete) {
-            log.info("Completing order {} - clearing products", order.getId());
-            cachedOrder.setProducts(new ArrayList<>());
-            cachedOrder.setComplete(true);
+            existingOrder.setProducts(new ArrayList<>());
+            existingOrder.setComplete(true);
         } else {
-            cachedOrder.setComplete(isComplete != null ? isComplete : false);
-            updateOrderProducts(cachedOrder, order.getProducts());
+            existingOrder.setComplete(isComplete != null ? isComplete : false);
+            updateOrderProducts(existingOrder, order.getProducts());
         }
 
-        // Explicitly update cache
-        Cache cache = cacheManager.getCache(ORDERS);
-        if (cache != null) {
-            cache.put(order.getId(), cachedOrder);
-            try {
-                orderEventPublisher.publish(cachedOrder);
-            } catch (Exception e) {
-                log.error("Failed to publish order update to Service Bus for order {}", cachedOrder.getId(), e);
-            }        }
+        orderRepository.save(existingOrder);
 
-        return cachedOrder;
+        try {
+            orderEventPublisher.publish(existingOrder);
+        } catch (Exception e) {
+            log.error("Failed to publish order update for {}", existingOrder.getId(), e);
+        }
+
+        return existingOrder;
     }
 
     /**
      * Validates that all products in the order exist in the available products list
      *
-     * @param orderProducts List of products from the order
+     * @param orderProducts     List of products from the order
      * @param availableProducts List of available products from Product Service
      * @throws IllegalArgumentException if any product is not found
      */

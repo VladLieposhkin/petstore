@@ -1,6 +1,9 @@
 package com.chtrembl.petstore.order.model;
 
+import com.azure.spring.data.cosmos.core.mapping.Container;
+import com.azure.spring.data.cosmos.core.mapping.PartitionKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -12,6 +15,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,35 +25,25 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(exclude = {"products"})
-@Schema(description = "Order entity representing a customer order")
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@Container(containerName = "order", autoCreateContainer = false)
 public class Order {
 
-	@NotNull(message = "Order ID cannot be null")
-	@Pattern(
-			regexp = "^[0-9A-F]{32}$",
-			message = "Order ID must be a 32-character uppercase hexadecimal string"
-	)
-	@Schema(
-			description = "Order identifier (typically session ID)",
-			example = "68FAE9B1D86B794F0AE0ADD35A437428"
-	)
+	@NotNull
+	@Pattern(regexp = "^[0-9A-F]{32}$")
+	@Id
+	@PartitionKey
 	private String id;
 
-	@Size(max = 255, message = "Email must not exceed 255 characters")
-	@Schema(description = "Customer email address",
-			example = "customer@example.com")
 	private String email;
 
 	@Valid
 	@Builder.Default
-	@Schema(description = "List of products in the order")
 	private List<Product> products = new ArrayList<>();
 
-	@Schema(description = "Order status", example = "placed")
 	private Status status;
 
 	@Builder.Default
-	@Schema(description = "Whether the order is completed", example = "false")
 	private Boolean complete = false;
 
 	public Boolean getComplete() {

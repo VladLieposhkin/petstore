@@ -9,6 +9,14 @@ petstore:
     product:
       url: ${PETSTOREPRODUCTSERVICE_URL:http://localhost:8082}
 
+azure:
+  cosmos:
+    uri: ${COSMOS_URI:https://vlcosmos.documents.azure.com:443/}
+    key: ${COSMOS_KEY:ueuC8VEvmUHvlCP2mqD8X0KKP7mmaqmWX1lK8GuOsPVepNJKh8mH2NkHhXcaTzulLQNf1Q8vWu1rACDbO6ERkQ==}
+    database: petstore
+    populate-query-metrics: true
+    consistency-level: SESSION
+
 springdoc:
   api-docs:
     path: /api-docs

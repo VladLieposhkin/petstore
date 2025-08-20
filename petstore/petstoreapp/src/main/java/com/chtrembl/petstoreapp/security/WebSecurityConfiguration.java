@@ -44,7 +44,7 @@ public class WebSecurityConfiguration {
         if (azureB2cConfigured) {
             http.csrf(csrf -> csrf.ignoringRequestMatchers("/content/**", "/.well-known/**"))
                     .authorizeHttpRequests(authz -> authz
-                            .requestMatchers("/").permitAll()
+//                            .requestMatchers("/").permitAll()
                             .requestMatchers("/*breed*").permitAll()
                             .requestMatchers("/*product*").permitAll()
                             .requestMatchers("/*cart*").permitAll()
@@ -56,7 +56,7 @@ public class WebSecurityConfiguration {
                             .requestMatchers("/actuator/info").permitAll()
                             .anyRequest().authenticated())
                     .oauth2Login(oauth2 -> oauth2
-                            .loginPage("/login")
+//                            .loginPage("/login")
                             .defaultSuccessUrl("/", true));
 
             containerEnvironment.setSecurityEnabled(true);

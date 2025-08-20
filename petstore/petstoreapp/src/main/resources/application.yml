@@ -9,6 +9,23 @@ petstore:
   security:
     # Enable this together with 'cloud.azure.active-directory.b2c.enabled = true' in Module 10
     enabled: ${PETSTORE_SECURITY_ENABLED:false}
+    oauth2:
+      client:
+        registration:
+          azure: # <-- это registrationId
+            client-id: 9a5c909b-c093-4447-97da-ab2273ff3dce
+            client-secret: 'secret'
+            scope: openid, offline_access
+            authorization-grant-type: authorization_code
+            redirect-uri: http://localhost:8080/login/oauth2/code/azure
+            # baseUrl обычно http://localhost:8080
+        provider:
+          azure:
+            authorization-uri: https://vlpetstore.b2clogin.com/vlpetstore.onmicrosoft.com/oauth2/v2.0/authorize?p=b2c_1_signinsignoutv1
+            token-uri: https://vlpetstore.b2clogin.com/vlpetstore.onmicrosoft.com/oauth2/v2.0/token?p=b2c_1_signinsignoutv1
+            user-info-uri: https://vlpetstore.b2clogin.com/vlpetstore.onmicrosoft.com/openid/userinfo
+            jwk-set-uri: https://vlpetstore.b2clogin.com/vlpetstore.onmicrosoft.com/discovery/v2.0/keys?p=b2c_1_signinsignoutv1
+            user-name-attribute: name
 server:
   port: ${PETSTOREAPP_SERVER_PORT:8080}
 management:
@@ -47,9 +64,22 @@ spring:
           # Enable this together with 'petstore.service.security.enabled = true' in Module 10
           enabled: ${PETSTOREAPP_B2C_ENABLED:false}
           # Add base-uri, client-id, client-secret, login-flow, logout-success-url, and user-flows
+          base-uri: https://vlpetstore.b2clogin.com/vlpetstore.onmicrosoft.com/
+          credential:
+            client-id: 9a5c909b-c093-4447-97da-ab2273ff3dce
+            client-secret: 'Uy18Q~QYe6lGnaYUod2OHQbtXLctNPH~dYoOYbsl'
+          user-name-attribute-name: name
+          logout-success-url: http://localhost:8080/
+          login-flow: sign-up-or-sign-in
+          user-flows:
+            sign-up-or-sign-in: b2c_1_signinsignoutv1
+
 logging:
   level:
     root: INFO
     com.chtrembl.petstoreapp: INFO
     com.azure.monitor.opentelemetry.autoconfigure.implementation.quickpulse.QuickPulsePingSender: ERROR
     com.azure.core.http.netty.NettyAsyncHttpClient: ERROR
+
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
